@@ -1,38 +1,43 @@
 import time
 from machine import Pin
 from umqtt.robust import MQTTClient
-
-led = Pin(0, Pin.OUT)
-led.off()
-
-def flicker():
-	for i in range(0, 10):
-		led.value(not led.value())
-		time.sleep_ms(100)
+from config import mqtt as mqttConfig
 
 def set_light_state(state):
-	print('Light: ', bool(state))
+	global mqttClient
+	led = Pin(0, Pin.OUT)
 	led.value(state)
+	print('Light: ', bool(state))
+	# Now publish the state on the state topic
+	mqttClient.publish(mqttConfig['state_topic'], b'1' if state else b'0')
 
 def handle_msg(topic, msg):
-	print(topic, msg)
 	try:
 		set_light_state(int(msg))
 	except ValueError:
 		print("Message not a number")
 
-def main(server="localhost"):
-	c = MQTTClient("nook_overheadlights", server)
-	c.DEBUG = True
-	c.set_callback(handle_msg)
-	c.connect()
-	c.subscribe(b"house/nook/overheadlights")
+def main():
+	global mqttClient
+	mqttClient = MQTTClient(mqttConfig['client_id'], mqttConfig['server'])
 
-	while True:
-		# Blocking wait
-		c.wait_msg()
+	# Setup the conneciton
+	mqttClient.set_callback(handle_msg)
+	mqttClient.connect()
+	mqttClient.subscribe(mqttConfig['set_topic'])
+	print("Connected to %s, subscribed to %s topic" % (mqttConfig['server'], mqttConfig['set_topic']))
 
-	c.disconnect()
+	# Off on reboot
+	set_light_state(0)
+
+	# Now await messages
+	try:
+		while True:
+			mqttClient.wait_msg()
+	except Exception as e:
+		print(e.__doc__)
+	finally:
+		mqttClient.disconnect()
 
 if __name__ == "__main__":
-	main("192.168.0.5")
+	main()
