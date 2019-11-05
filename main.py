@@ -1,4 +1,5 @@
 import time
+from utime import ticks_ms
 from machine import Pin
 from umqtt.robust import MQTTClient
 from config import mqtt as mqttConfig
@@ -16,6 +17,15 @@ def handle_msg(topic, msg):
 		set_switch_state(int(msg))
 	except ValueError:
 		print("Message not a number")
+
+ticks_at_last_heartbeat = ticks_ms()
+def heartbeat():
+	global ticks_at_last_heartbeat
+	if ticks_ms() - ticks_at_last_heartbeat > 3000:
+		global mqttClient
+		# print('Sending heartbeat...')
+		ticks_at_last_heartbeat = ticks_ms()
+		mqttClient.ping()
 
 def main():
 	# TODO I'm pretty sure globals are still evil in MicroPython. Need a better solution
@@ -35,9 +45,11 @@ def main():
 	# Now await messages
 	try:
 		while True:
-			mqttClient.wait_msg()
+			mqttClient.check_msg()
+			heartbeat()
+			time.sleep_ms(50)
 	except Exception as e:
-		print(e.__doc__)
+		print(e)
 	finally:
 		mqttClient.disconnect()
 
