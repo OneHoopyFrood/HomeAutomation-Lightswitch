@@ -21,9 +21,9 @@ def do_connect():
 
     if not sta_if.isconnected():
         from config import wifi
-        print('Connecting to %s...' %(wifi.ssid))
+        print('Connecting to %s...' %(wifi['ssid']))
         sta_if.active(True)
-        sta_if.connect(wifi.ssid, wifi.password)
+        sta_if.connect(wifi['ssid'], wifi['password'])
         while not sta_if.isconnected():
             pass
     network.WLAN(network.AP_IF).active(False)
