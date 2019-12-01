@@ -41,12 +41,9 @@ class MQTTSwitch(MQTTClient):
     # Setup MQTT connection
     self.set_callback(self.__handle_msg)
     self.set_last_will(self.availability_topic, msg=b'offline', retain=True, qos=1)
-    # TODO What if the MQTT Broker isn't available?
     self.connect()
     self.subscribe(self.set_topic, 1)
-    # Set available
-    self.publish(self.availability_topic, msg=b'online', retain=True, qos=1)
-    print("Connected to %s, subscribed to topic: '%s'" %(self.server_address, self.set_topic.decode()))
+    print('Subscribed to topic:', self.set_topic.decode())
     # Start off
     self.off()
     # TODO Setup button IQR
@@ -58,18 +55,18 @@ class MQTTSwitch(MQTTClient):
         self.__heartbeat()
         sleep_ms(50)
       except MQTTException as e:
-        print("MQTT Error encountered", e)
+        print("Encountered MQTT Error:", e)
         print('Attempting to recover')
-        print('Disconnecting from server...')
-        self.disconnect()
-        sleep_ms(100)
-        print('Reconnecting...')
         try:
+          print('Disconnecting from server...')
+          self.disconnect()
+          sleep_ms(100)
+          print('Reconnecting...')
           self.connect()
           print('Recovered. Continuing...')
         except MQTTException as e2:
           print('Recovery failed.')
-          raise Exception('Unable to recover from MQTT Error')
+          raise # Bump up to get into next error state.
       except Exception as e:
         # Write to log
         f = open('Error.log', 'a')
@@ -82,6 +79,13 @@ class MQTTSwitch(MQTTClient):
 
     self.disconnect()
 
+  def connect(self):
+    # TODO What if the MQTT Broker isn't available?
+    super().connect()
+    # Set available
+    self.publish(self.availability_topic, msg=b'online', retain=True, qos=1)
+    print("Connected to %s" %(self.server_address))
+
   def on(self):
     self.set_value(1)
 
@@ -92,8 +96,8 @@ class MQTTSwitch(MQTTClient):
     return 'ON' if self.relay.value() == 1 else 'OFF'
 
   def set_value(self, value):
-    print('Setting relay pin to %s' %(value))
     self.relay.value(value)
+    print('Relay set to %s' %(self.state()))
     # Publish to MQTT Topic
     self.publish(self.state_topic, self.state().encode(), retain=True, qos=1)
 
@@ -113,7 +117,7 @@ class MQTTSwitch(MQTTClient):
 
   def __heartbeat(self):
     if ticks_diff(ticks_ms(), self.ticks_at_last_heartbeat) > (self.keepalive * 1000 / 2):
-      print('noop', '-', time() - self.start_time)
+      print('HeartBeat', '-', time() - self.start_time)
       self.ticks_at_last_heartbeat = ticks_ms()
       self.ping()
 
