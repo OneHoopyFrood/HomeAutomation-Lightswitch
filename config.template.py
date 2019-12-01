@@ -7,6 +7,5 @@ wifi = {
 mqtt = {
   'server': '<serverIP>',
   'client_id': '<mqtt_unique_client_id>',
-  'state_topic': b'<topic>',
-  'set_topic': b'<topic>/set', # Reccomended pattern
+  'priamry_topic': '<topic>',
 }
